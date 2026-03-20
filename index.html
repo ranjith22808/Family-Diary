@@ -11,36 +11,42 @@
 <body class="bg-gray-100 font-sans pb-20">
 
     <header class="bg-blue-700 text-white p-4 sticky top-0 z-10 shadow-lg">
-        <h1 class="text-xl font-bold">👨‍👩‍👧‍👦 Family Contact Diary</h1>
-        <input type="text" id="searchInput" placeholder="Search Name, Family, or Place..." 
-               class="w-full mt-3 p-3 rounded-lg text-black focus:ring-2 focus:ring-yellow-400 outline-none">
+        <h1 class="text-xl font-bold text-center italic">MATISHA Family Diary</h1>
+        <input type="text" id="searchInput" placeholder="Search Name, Sub-Family, Place..." 
+               class="w-full mt-3 p-3 rounded-lg text-black focus:ring-2 focus:ring-yellow-400 outline-none shadow-inner">
     </header>
 
     <div class="p-4 flex gap-3">
-        <button onclick="openModal()" class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold shadow-md active:bg-green-700">+ Add New</button>
-        <button onclick="exportToExcel()" class="flex-1 bg-slate-700 text-white py-3 rounded-lg font-bold shadow-md">📥 Excel</button>
+        <button onclick="openModal()" class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold shadow-md active:scale-95 transition-transform">+ Add New</button>
+        <button onclick="exportToExcel()" class="flex-1 bg-slate-700 text-white py-3 rounded-lg font-bold shadow-md">📥 Download Excel</button>
     </div>
 
     <div id="contactList" class="p-4 space-y-4">
-        <p class="text-center text-gray-500 mt-10">Connecting to Family Database...</p>
+        <p class="text-center text-gray-400 mt-10 italic">Connecting to Cloud Firestore...</p>
     </div>
+
+    <datalist id="familySuggestions"></datalist>
+    <datalist id="subFamilySuggestions"></datalist>
+    <datalist id="placeSuggestions"></datalist>
 
     <div id="contactModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-20">
         <div class="bg-white w-full max-w-md p-6 rounded-2xl shadow-2xl">
-            <h2 id="modalTitle" class="text-2xl font-bold mb-6 text-gray-800">Add Contact</h2>
+            <h2 id="modalTitle" class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Add Family Member</h2>
             <input type="hidden" id="editId">
             <div class="space-y-4">
                 <input type="text" id="name" placeholder="Full Name" class="w-full border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
+                
                 <div class="flex gap-2">
-                    <input type="text" id="family" placeholder="Family Name" class="w-1/2 border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
-                    <input type="text" id="subFamily" placeholder="Sub Family" class="w-1/2 border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
+                    <input type="text" id="family" list="familySuggestions" placeholder="Family Name" class="w-1/2 border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
+                    <input type="text" id="subFamily" list="subFamilySuggestions" placeholder="Sub Family" class="w-1/2 border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
                 </div>
+                
                 <input type="tel" id="phone" placeholder="Phone Number" class="w-full border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
-                <input type="text" id="place" placeholder="Place / City" class="w-full border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
+                <input type="text" id="place" list="placeSuggestions" placeholder="Place / City" class="w-full border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
             </div>
             <div class="flex gap-3 mt-8">
-                <button onclick="closeModal()" class="flex-1 bg-gray-100 py-3 rounded-lg font-semibold">Cancel</button>
-                <button onclick="saveContact()" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold shadow-lg">Save Contact</button>
+                <button onclick="closeModal()" class="flex-1 bg-gray-100 py-3 rounded-lg font-semibold hover:bg-gray-200">Cancel</button>
+                <button onclick="saveContact()" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:bg-blue-700">Save Data</button>
             </div>
         </div>
     </div>
@@ -50,14 +56,14 @@
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+        // Your specific config
         const firebaseConfig = {
             apiKey: "AIzaSyBLWrs7rGUhfRDuD8dPMZdjjCYMSAtPleM",
             authDomain: "family-dairy-192b9.firebaseapp.com",
             projectId: "family-dairy-192b9",
             storageBucket: "family-dairy-192b9.firebasestorage.app",
             messagingSenderId: "1024399308563",
-            appId: "1:1024399308563:web:7eda6313a984c5b3facce6",
-            measurementId: "G-CVBL1XEDK5"
+            appId: "1:1024399308563:web:7eda6313a984c5b3facce6"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -68,12 +74,27 @@
 
         onSnapshot(query(contactsCol, orderBy("name")), (snapshot) => {
             allContacts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            updateSuggestions();
             renderContacts(allContacts);
         });
 
+        // 🧠 Auto-Suggestion logic: Collects unique values for Family, Sub-Family, and Place
+        function updateSuggestions() {
+            const getUnique = (field) => [...new Set(allContacts.map(c => c[field]).filter(val => val))];
+            
+            const fillDatalist = (id, values) => {
+                const list = document.getElementById(id);
+                list.innerHTML = values.map(v => `<option value="${v}">`).join('');
+            };
+
+            fillDatalist('familySuggestions', getUnique('family'));
+            fillDatalist('subFamilySuggestions', getUnique('subFamily'));
+            fillDatalist('placeSuggestions', getUnique('place'));
+        }
+
         window.renderContacts = (data) => {
             const container = document.getElementById('contactList');
-            container.innerHTML = data.length ? '' : '<div class="text-center py-20 opacity-50">No contacts yet. Add your first one!</div>';
+            container.innerHTML = data.length ? '' : '<div class="text-center py-20 opacity-50">Empty. Add your first contact.</div>';
             
             data.forEach(c => {
                 container.innerHTML += `
@@ -81,20 +102,20 @@
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
                             <h3 class="font-bold text-xl text-gray-900">${c.name}</h3>
-                            <div class="flex gap-2 mt-1">
+                            <div class="flex flex-wrap gap-2 mt-2">
                                 <span class="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase">${c.family}</span>
                                 <span class="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase">${c.subFamily}</span>
+                                <span class="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase">📍 ${c.place}</span>
                             </div>
-                            <p class="text-sm text-gray-500 mt-2 font-medium">📍 ${c.place}</p>
-                            <p class="text-lg font-bold text-gray-700 mt-1">${c.phone}</p>
+                            <p class="text-lg font-bold text-gray-700 mt-3">${c.phone}</p>
                         </div>
                         <div class="flex flex-col gap-3">
-                             <a href="tel:${c.phone}" class="bg-green-500 p-3 rounded-full text-white text-center shadow-lg">📞</a>
+                             <a href="tel:${c.phone}" class="bg-green-500 p-3 rounded-full text-white shadow-lg active:bg-green-600">📞</a>
                              <button onclick="editContact('${c.id}')" class="text-blue-600 font-bold text-sm">Edit</button>
                         </div>
                     </div>
                     <div class="mt-4 pt-3 border-t flex justify-end">
-                        <button onclick="confirmDelete('${c.id}', '${c.name}')" class="text-red-400 text-xs font-medium">Remove Member</button>
+                        <button onclick="confirmDelete('${c.id}', '${c.name}')" class="text-red-400 text-xs hover:text-red-600">Remove from Cloud</button>
                     </div>
                 </div>`;
             });
@@ -110,26 +131,27 @@
                 place: document.getElementById('place').value
             };
 
-            if(!data.name || !data.phone) return alert("Please enter at least Name and Phone!");
-
+            if(!data.name || !data.phone) return alert("Fill Name and Phone!");
             id ? await updateDoc(doc(db, "contacts", id), data) : await addDoc(contactsCol, data);
             closeModal();
         };
 
         window.confirmDelete = async (id, name) => {
             if(confirm(`Delete ${name}?`)) {
-                if(confirm(`Are you absolutely sure? This will delete it for everyone.`)) {
+                if(confirm(`WARNING: This will delete the data for EVERYONE. Continue?`)) {
                     await deleteDoc(doc(db, "contacts", id));
                 }
             }
         };
 
+        // 🔍 Enhanced Search Logic (Now checks Sub-Family too)
         document.getElementById('searchInput').addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase();
             const filtered = allContacts.filter(c => 
-                c.name.toLowerCase().includes(term) || 
-                c.family.toLowerCase().includes(term) || 
-                c.place.toLowerCase().includes(term)
+                (c.name?.toLowerCase() || "").includes(term) || 
+                (c.family?.toLowerCase() || "").includes(term) || 
+                (c.subFamily?.toLowerCase() || "").includes(term) || 
+                (c.place?.toLowerCase() || "").includes(term)
             );
             renderContacts(filtered);
         });
@@ -139,12 +161,12 @@
             const worksheet = XLSX.utils.json_to_sheet(dataToExport);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Family Contacts");
-            XLSX.writeFile(workbook, "Family_Diary_Backup.xlsx");
+            XLSX.writeFile(workbook, "Family_Diary_Cloud_Export.xlsx");
         };
 
         window.openModal = () => {
             document.getElementById('editId').value = "";
-            document.getElementById('modalTitle').innerText = "Add New Contact";
+            document.getElementById('modalTitle').innerText = "New Family Member";
             document.getElementById('contactModal').classList.remove('hidden');
         };
         window.editContact = (id) => {
@@ -155,7 +177,7 @@
             document.getElementById('subFamily').value = c.subFamily;
             document.getElementById('phone').value = c.phone;
             document.getElementById('place').value = c.place;
-            document.getElementById('modalTitle').innerText = "Edit Details";
+            document.getElementById('modalTitle').innerText = "Update Member";
             document.getElementById('contactModal').classList.remove('hidden');
         };
         window.closeModal = () => {
