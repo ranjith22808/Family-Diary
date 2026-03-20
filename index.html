@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Family Diary</title>
-    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Family%20Diary%22,%22short_name%22:%22FamilyDiary%22,%22start_url%22:%22index.html%22,%22display%22:%22standalone%22,%22background_color%22:%22#1d4ed8%22,%22theme_color%22:%22#1d4ed8%22,%22icons%22:[{%22src%22:%22https://img.icons8.com/color/512/family-tree.png%22,%22sizes%22:%22512x512%22,%22type%22:%22image/png%22}]}">
-    <meta name="theme-color" content="#1d4ed8">
     
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1d4ed8">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/color/512/family-tree.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -32,9 +34,10 @@
     <datalist id="placeSuggestions"></datalist>
 
     <div id="contactModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-20">
-        <div class="bg-white w-full max-w-md p-6 rounded-2xl shadow-2xl relative">
+        <div class="bg-white w-full max-w-md p-6 rounded-2xl shadow-2xl">
             <h2 id="modalTitle" class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Add Family Member</h2>
             <input type="hidden" id="editId">
+            
             <div class="space-y-4">
                 <input type="text" id="name" placeholder="Full Name" class="w-full border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
                 
@@ -47,7 +50,7 @@
                 <input type="text" id="place" list="placeSuggestions" placeholder="Place / City" class="w-full border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
             </div>
 
-            <p id="saveStatus" class="text-center text-green-600 mt-4 font-bold hidden">✅ Data Saved Successfully!</p>
+            <p id="saveStatus" class="text-center text-green-600 mt-4 font-bold hidden">✅ Data Saved!</p>
 
             <div class="flex gap-3 mt-8">
                 <button onclick="closeModal()" class="flex-1 bg-gray-200 py-3 rounded-lg font-semibold hover:bg-gray-300">Close</button>
@@ -82,26 +85,24 @@
             renderContacts(allContacts);
         });
 
-        // 🧠 Capitalize Each Word Logic
-        const formatTitle = (str) => {
+        // Helper: Capitalize Each Word
+        const toTitleCase = (str) => {
             if (!str) return "";
-            return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+            return str.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
         };
 
         function updateSuggestions() {
-            const getUnique = (field) => [...new Set(allContacts.map(c => c[field]).filter(val => val))];
-            const fillDatalist = (id, values) => {
-                const list = document.getElementById(id);
-                list.innerHTML = values.map(v => `<option value="${v}">`).join('');
-            };
-            fillDatalist('familySuggestions', getUnique('family'));
-            fillDatalist('subFamilySuggestions', getUnique('subFamily'));
-            fillDatalist('placeSuggestions', getUnique('place'));
+            const getUnique = (field) => [...new Set(allContacts.map(c => c[field]).filter(v => v))];
+            const fillList = (id, vals) => document.getElementById(id).innerHTML = vals.map(v => `<option value="${v}">`).join('');
+            
+            fillList('familySuggestions', getUnique('family'));
+            fillList('subFamilySuggestions', getUnique('subFamily'));
+            fillList('placeSuggestions', getUnique('place'));
         }
 
         window.renderContacts = (data) => {
             const container = document.getElementById('contactList');
-            container.innerHTML = data.length ? '' : '<div class="text-center py-20 opacity-50">Empty. Add your first contact.</div>';
+            container.innerHTML = data.length ? '' : '<div class="text-center py-20 opacity-50">No contacts found.</div>';
             
             data.forEach(c => {
                 const cleanPhone = (c.phone || "").replace(/\D/g, '');
@@ -128,7 +129,7 @@
                         </div>
                     </div>
                     <div class="mt-4 pt-3 border-t flex justify-end">
-                        <button onclick="confirmDelete('${c.id}', '${c.name}')" class="text-red-400 text-xs hover:text-red-600">Remove from Cloud</button>
+                        <button onclick="confirmDelete('${c.id}', '${c.name}')" class="text-red-400 text-xs hover:text-red-600">Remove</button>
                     </div>
                 </div>`;
             });
@@ -137,11 +138,11 @@
         window.saveContact = async () => {
             const id = document.getElementById('editId').value;
             const data = {
-                name: formatTitle(document.getElementById('name').value),
-                family: formatTitle(document.getElementById('family').value),
-                subFamily: formatTitle(document.getElementById('subFamily').value),
+                name: toTitleCase(document.getElementById('name').value),
+                family: toTitleCase(document.getElementById('family').value),
+                subFamily: toTitleCase(document.getElementById('subFamily').value),
                 phone: document.getElementById('phone').value,
-                place: formatTitle(document.getElementById('place').value)
+                place: toTitleCase(document.getElementById('place').value)
             };
 
             if(!data.name || !data.phone) return alert("Fill Name and Phone!");
@@ -149,25 +150,19 @@
             try {
                 id ? await updateDoc(doc(db, "contacts", id), data) : await addDoc(contactsCol, data);
                 
-                // Show Save Status Message
                 const status = document.getElementById('saveStatus');
                 status.classList.remove('hidden');
-                setTimeout(() => status.classList.add('hidden'), 2500);
+                setTimeout(() => status.classList.add('hidden'), 2000);
 
-                // If adding new, clear inputs but DO NOT close modal
                 if(!id) {
                     ['name', 'family', 'subFamily', 'phone', 'place'].forEach(f => document.getElementById(f).value = "");
                 }
-            } catch (err) {
-                alert("Error: " + err.message);
-            }
+            } catch (err) { alert(err.message); }
         };
 
         window.confirmDelete = async (id, name) => {
             if(confirm(`Delete ${name}?`)) {
-                if(confirm(`WARNING: This will delete for everyone. Continue?`)) {
-                    await deleteDoc(doc(db, "contacts", id));
-                }
+                await deleteDoc(doc(db, "contacts", id));
             }
         };
 
@@ -184,10 +179,10 @@
 
         window.exportToExcel = () => {
             const dataToExport = allContacts.map(({id, ...rest}) => rest);
-            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Family Contacts");
-            XLSX.writeFile(workbook, "Family_Diary_Cloud_Export.xlsx");
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Family Contacts");
+            XLSX.writeFile(wb, "FamilyDiary_Export.xlsx");
         };
 
         window.openModal = () => {
@@ -213,5 +208,16 @@
             ['name', 'family', 'subFamily', 'phone', 'place'].forEach(f => document.getElementById(f).value = "");
         };
     </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW Registered!', reg))
+                    .catch(err => console.error('SW Failed!', err));
+            });
+        }
+    </script>
+
 </body>
 </html>

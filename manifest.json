@@ -1,0 +1,23 @@
+{
+  "name": "Family Diary",
+  "short_name": "FamilyDiary",
+  "description": "A private digital space for family memories and contacts.",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#1d4ed8",
+  "theme_color": "#1d4ed8",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/color/192/family-tree.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://img.icons8.com/color/512/family-tree.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
