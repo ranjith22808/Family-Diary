@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Family Diary</title>
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Family%20Diary%22,%22short_name%22:%22FamilyDiary%22,%22start_url%22:%22index.html%22,%22display%22:%22standalone%22,%22background_color%22:%22#1d4ed8%22,%22theme_color%22:%22#1d4ed8%22,%22icons%22:[{%22src%22:%22https://img.icons8.com/color/512/family-tree.png%22,%22sizes%22:%22512x512%22,%22type%22:%22image/png%22}]}">
+    <meta name="theme-color" content="#1d4ed8">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -30,12 +32,8 @@
     <datalist id="placeSuggestions"></datalist>
 
     <div id="contactModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-20">
-        <div class="bg-white w-full max-w-md p-6 rounded-2xl shadow-2xl">
-            <div class="flex justify-between items-center mb-6 border-b pb-2">
-                <h2 id="modalTitle" class="text-2xl font-bold text-gray-800">Add Family Member</h2>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-            </div>
-            
+        <div class="bg-white w-full max-w-md p-6 rounded-2xl shadow-2xl relative">
+            <h2 id="modalTitle" class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Add Family Member</h2>
             <input type="hidden" id="editId">
             <div class="space-y-4">
                 <input type="text" id="name" placeholder="Full Name" class="w-full border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
@@ -48,11 +46,13 @@
                 <input type="tel" id="phone" placeholder="Phone Number" class="w-full border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
                 <input type="text" id="place" list="placeSuggestions" placeholder="Place / City" class="w-full border-2 p-3 rounded-lg focus:border-blue-500 outline-none">
             </div>
+
+            <p id="saveStatus" class="text-center text-green-600 mt-4 font-bold hidden">✅ Data Saved Successfully!</p>
+
             <div class="flex gap-3 mt-8">
-                <button onclick="closeModal()" class="flex-1 bg-gray-100 py-3 rounded-lg font-semibold hover:bg-gray-200">Close</button>
+                <button onclick="closeModal()" class="flex-1 bg-gray-200 py-3 rounded-lg font-semibold hover:bg-gray-300">Close</button>
                 <button onclick="saveContact()" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:bg-blue-700">Save Data</button>
             </div>
-            <p id="saveStatus" class="text-center text-green-600 mt-2 text-sm font-bold hidden">Successfully Saved!</p>
         </div>
     </div>
 
@@ -82,10 +82,10 @@
             renderContacts(allContacts);
         });
 
-        // 🧠 Logic to Capitalize Each Word
-        const titleCase = (str) => {
+        // 🧠 Capitalize Each Word Logic
+        const formatTitle = (str) => {
             if (!str) return "";
-            return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+            return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
         };
 
         function updateSuggestions() {
@@ -104,6 +104,7 @@
             container.innerHTML = data.length ? '' : '<div class="text-center py-20 opacity-50">Empty. Add your first contact.</div>';
             
             data.forEach(c => {
+                const cleanPhone = (c.phone || "").replace(/\D/g, '');
                 container.innerHTML += `
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
                     <div class="flex justify-between items-start">
@@ -117,7 +118,12 @@
                             <p class="text-lg font-bold text-gray-700 mt-3">${c.phone}</p>
                         </div>
                         <div class="flex flex-col gap-3">
-                             <a href="tel:${c.phone}" class="bg-green-500 p-3 rounded-full text-white shadow-lg active:bg-green-600">📞</a>
+                             <a href="tel:${c.phone}" class="bg-green-500 p-3 rounded-full text-white shadow-lg flex items-center justify-center">📞</a>
+                             
+                             <a href="https://wa.me/${cleanPhone}" target="_blank" class="bg-emerald-600 p-3 rounded-full text-white shadow-lg flex items-center justify-center">
+                                <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.246 2.248 3.484 5.232 3.484 8.412-.003 6.557-5.338 11.892-11.893 11.892-1.997-.001-3.951-.5-5.688-1.448l-6.309 1.656zm6.29-4.143c1.489.881 3.257 1.346 5.061 1.347 5.462 0 9.904-4.441 9.907-9.904 0-2.646-1.03-5.132-2.903-7.005-1.873-1.873-4.359-2.903-7.004-2.903-5.463 0-9.903 4.44-9.907 9.903-.001 1.93.535 3.805 1.547 5.45l-.946 3.454 3.545-.93zm11.367-7.4c-.301-.15-1.781-.879-2.056-.979-.275-.1-.475-.15-.675.15-.199.299-.775.979-.95 1.178-.175.199-.35.224-.65.075-.3-.15-1.268-.467-2.414-1.485-.892-.795-1.493-1.777-1.668-2.076-.175-.299-.019-.461.13-.61.135-.133.301-.35.451-.524.15-.174.199-.299.301-.498.1-.199.05-.374-.025-.524s-.675-1.624-.925-2.228c-.244-.589-.491-.509-.675-.519-.174-.01-.374-.01-.575-.01-.199 0-.524.075-.799.374-.275.299-1.05 1.024-1.05 2.497 0 1.472 1.074 2.894 1.223 3.094.15.199 2.113 3.227 5.12 4.524.714.307 1.272.49 1.707.629.718.227 1.37.195 1.887.118.575-.085 1.781-.724 2.031-1.423.25-.699.25-1.298.175-1.423-.075-.125-.275-.199-.575-.349z"/></svg>
+                             </a>
+
                              <button onclick="editContact('${c.id}')" class="text-blue-600 font-bold text-sm">Edit</button>
                         </div>
                     </div>
@@ -130,14 +136,12 @@
 
         window.saveContact = async () => {
             const id = document.getElementById('editId').value;
-            
-            // Format data to Title Case before saving
             const data = {
-                name: titleCase(document.getElementById('name').value),
-                family: titleCase(document.getElementById('family').value),
-                subFamily: titleCase(document.getElementById('subFamily').value),
+                name: formatTitle(document.getElementById('name').value),
+                family: formatTitle(document.getElementById('family').value),
+                subFamily: formatTitle(document.getElementById('subFamily').value),
                 phone: document.getElementById('phone').value,
-                place: titleCase(document.getElementById('place').value)
+                place: formatTitle(document.getElementById('place').value)
             };
 
             if(!data.name || !data.phone) return alert("Fill Name and Phone!");
@@ -145,23 +149,23 @@
             try {
                 id ? await updateDoc(doc(db, "contacts", id), data) : await addDoc(contactsCol, data);
                 
-                // Show visual feedback instead of closing
+                // Show Save Status Message
                 const status = document.getElementById('saveStatus');
                 status.classList.remove('hidden');
-                setTimeout(() => status.classList.add('hidden'), 3000);
-                
-                // Clear fields if it was a "New" entry, but keep modal open
+                setTimeout(() => status.classList.add('hidden'), 2500);
+
+                // If adding new, clear inputs but DO NOT close modal
                 if(!id) {
-                    ['name', 'family', 'subFamily', 'phone', 'place'].forEach(id => document.getElementById(id).value = "");
+                    ['name', 'family', 'subFamily', 'phone', 'place'].forEach(f => document.getElementById(f).value = "");
                 }
-            } catch (e) {
-                alert("Error saving data: " + e.message);
+            } catch (err) {
+                alert("Error: " + err.message);
             }
         };
 
         window.confirmDelete = async (id, name) => {
             if(confirm(`Delete ${name}?`)) {
-                if(confirm(`WARNING: This will delete the data for EVERYONE. Continue?`)) {
+                if(confirm(`WARNING: This will delete for everyone. Continue?`)) {
                     await deleteDoc(doc(db, "contacts", id));
                 }
             }
@@ -206,7 +210,7 @@
 
         window.closeModal = () => {
             document.getElementById('contactModal').classList.add('hidden');
-            ['name', 'family', 'subFamily', 'phone', 'place'].forEach(id => document.getElementById(id).value = "");
+            ['name', 'family', 'subFamily', 'phone', 'place'].forEach(f => document.getElementById(f).value = "");
         };
     </script>
 </body>
